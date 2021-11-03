@@ -8,12 +8,13 @@ public class PlayerController : MonoBehaviour
     private Rigidbody2D rb;
     private Animator animator;
 
+    public AudioSource jumpAudio, collectionAudio, hurtAudio;
     public Collider2D coll;
     public LayerMask ground;
-    public Text CherryNumber;
+    public Text cherryNumber;
 
     public float speed = 400.0f;
-    public float jumpforce = 400.0f;
+    public float jumpForce = 400.0f;
     public int score;
     //默认为false
     private bool isHurt;
@@ -62,7 +63,8 @@ public class PlayerController : MonoBehaviour
         if (Input.GetButtonDown("Jump") && coll.IsTouchingLayers(ground))
         {
             //通过修改速度来实现跳跃，x不变，y变大
-            rb.velocity = new Vector2(rb.velocity.x, jumpforce * Time.fixedDeltaTime);
+            rb.velocity = new Vector2(rb.velocity.x, jumpForce * Time.fixedDeltaTime);
+            jumpAudio.Play();
             animator.SetBool("jumping", true);
         }
     }
@@ -106,9 +108,10 @@ public class PlayerController : MonoBehaviour
     {
         if (collision.tag == "Collection")
         {
+            collectionAudio.Play();
             Destroy(collision.gameObject);
             score++;
-            CherryNumber.text = score.ToString();
+            cherryNumber.text = score.ToString();
         }
     }
 
@@ -117,20 +120,22 @@ public class PlayerController : MonoBehaviour
         //碰到敌人时
         if (collision.gameObject.tag == "Enemy")
         {
-            Enemy_Frog frog = collision.gameObject.GetComponent<Enemy_Frog>();
+            Enemy enemy = collision.gameObject.GetComponent<Enemy>();
             if (animator.GetBool("falling"))
             {
-                frog.JumpOn();
+                enemy.JumpOn();
                 rb.velocity = new Vector2(rb.velocity.x, 5);
             }
             else if(transform.position.x < collision.gameObject.transform.position.x)
             {
                 isHurt = true;
+                hurtAudio.Play();
                 rb.velocity = new Vector2(-10, rb.velocity.y);
             }
             else if(transform.position.x > collision.gameObject.transform.position.x)
             {
                 isHurt = true;
+                hurtAudio.Play();
                 rb.velocity = new Vector2(10, rb.velocity.y);
             }
         }
