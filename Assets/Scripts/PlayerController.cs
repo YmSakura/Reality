@@ -10,14 +10,19 @@ public class PlayerController : MonoBehaviour
 
     public AudioSource jumpAudio, collectionAudio, hurtAudio;
     public Collider2D coll;
+    public Collider2D Discoll;
     public LayerMask ground;
     public Text cherryNumber;
+    public Transform ceilingCheck;
 
     public float speed = 400.0f;
     public float jumpForce = 400.0f;
     public int score;
-    //默认为false
-    private bool isHurt;
+
+    //是否为受伤状态
+    private bool isHurt = false;
+    //下蹲检测
+    private bool checkHead = false;
 
 
     // Start is called before the first frame update
@@ -30,10 +35,7 @@ public class PlayerController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if(!isHurt)
-        {
-            Movement();
-        }
+        if(!isHurt) Movement();
         SwitchAnimation();
     }
 
@@ -50,10 +52,10 @@ public class PlayerController : MonoBehaviour
 
         //角色移动
         rb.velocity = new Vector2(horizontalAxis * speed * Time.fixedDeltaTime, rb.velocity.y);
-        //控制运动动画
+        //running参数的关联
         animator.SetFloat("running", Mathf.Abs(faceDirection));
 
-        //人物转向
+        //角色转向
         if (faceDirection != 0)
         {
             transform.localScale = new Vector3(faceDirection, 1, 1);
@@ -67,6 +69,9 @@ public class PlayerController : MonoBehaviour
             jumpAudio.Play();
             animator.SetBool("jumping", true);
         }
+
+        //角色下蹲
+        Crouch();
     }
 
     //切换动画效果
@@ -80,7 +85,7 @@ public class PlayerController : MonoBehaviour
         //正在跳跃
         if (animator.GetBool("jumping"))
         {
-            Debug.Log(rb.velocity.y);
+            //Debug.Log(rb.velocity.y);
             //y轴速度消失，开始下落
             if(rb.velocity.y <= 0)
             {
@@ -115,6 +120,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    //消灭敌人
     private void OnCollisionEnter2D(Collision2D collision)
     {
         //碰到敌人时
@@ -140,4 +146,34 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
+
+    //下蹲
+    private void Crouch()
+    {
+        if (Input.GetButtonDown("Crouch"))
+        {
+            animator.SetBool("crouching", true);
+            //关闭box collider
+            Discoll.enabled = false;
+        }
+        else if (Input.GetButtonUp("Crouch"))
+        {
+            //当下蹲键松下时检测启动
+            checkHead = true;
+        }
+        //检测头顶是否有ground
+        if(checkHead)
+        {
+            //overlap是重叠的意思，函数的作用是检查是否有碰撞体进入了指定的圆形区域
+            //当角色头顶没有ground的碰撞体时才可以恢复idle状态
+            if (!Physics2D.OverlapCircle(ceilingCheck.position, 0.2f, ground))
+            {
+                animator.SetBool("crouching", false);
+                Discoll.enabled = true;
+                //关闭检测
+                checkHead = false;
+            }
+        }    
+    }
+
 }

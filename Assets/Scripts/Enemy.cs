@@ -24,5 +24,4 @@ public class Enemy : MonoBehaviour
         deathAudio.Play();
     }
 
-
 }
