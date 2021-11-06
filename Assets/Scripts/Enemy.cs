@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Enemy : MonoBehaviour
@@ -15,6 +13,8 @@ public class Enemy : MonoBehaviour
     }
     void Death()
     {
+        //取消碰撞体必须写在Death里，如果提前取消的话受重力影响，会边爆炸边下落
+        GetComponent<Collider2D>().enabled = false;
         Destroy(gameObject);
     }
 
