@@ -13,6 +13,7 @@ public class PlayerController : MonoBehaviour
     public LayerMask ground;
     public Text cherryNumber;
     public Transform ceilingCheck, floorCheck;
+    public Joystick joystick;
 
     public float speed = 400.0f;
     public float jumpForce = 400.0f;
@@ -43,9 +44,14 @@ public class PlayerController : MonoBehaviour
     void Movement()
     {
         //GetAxis ：-1 -> 0 ->1 平滑过度
-        float horizontalAxis = Input.GetAxis("Horizontal");
+        //float horizontalAxis = Input.GetAxis("Horizontal");
         //GetAxisRaw ：直接返回-1 0 1，没有中间值
-        float faceDirection = Input.GetAxisRaw("Horizontal");
+        //float faceDirection = Input.GetAxisRaw("Horizontal");
+        
+        //安卓移动：
+        float horizontalAxis = joystick.Horizontal;
+        float faceDirection = joystick.Horizontal;
+
 
         //角色移动
         rb.velocity = new Vector2(horizontalAxis * speed * Time.fixedDeltaTime, rb.velocity.y);
@@ -53,8 +59,14 @@ public class PlayerController : MonoBehaviour
         animator.SetFloat("running", Mathf.Abs(faceDirection));
 
         //角色转向
-        if (faceDirection != 0)
-            transform.localScale = new Vector3(faceDirection, 1, 1);
+        //if (faceDirection != 0)
+        //    transform.localScale = new Vector3(faceDirection, 1, 1);
+
+        //安卓转向
+        if(faceDirection > 0f)
+            transform.localScale = new Vector3(1, 1, 1);
+        if(faceDirection < 0f)
+            transform.localScale = new Vector3(-1, 1, 1);
 
     }
 

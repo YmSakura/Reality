@@ -2,10 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Audio;
 
 public class Menu : MonoBehaviour
 {
     public GameObject pauseMenu;
+    public AudioMixer audioMixer;
     
     public void StartGame()
     {
@@ -35,5 +37,8 @@ public class Menu : MonoBehaviour
         Time.timeScale = 1f;
     }
 
-
+    public void SetVolume(float value)
+    {
+        audioMixer.SetFloat("MainVolume", value);
+    }
 }
