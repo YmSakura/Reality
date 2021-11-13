@@ -1,28 +1,31 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 
 public class PlayerController : MonoBehaviour
 {
     private Rigidbody2D rb;
     private Animator animator;
 
-    public AudioSource jumpAudio, collectionAudio, hurtAudio;
-    public Collider2D coll;
-    public Collider2D discoll;
+    public Collider2D smallCollider, bigCollider;
     public LayerMask ground;
-    public Text cherryNumber;
-    public Transform ceilingCheck, floorCheck;
+    public TextMeshProUGUI cherryNumber;
+    public Transform ceilingCheck, groundCheck;
     public Joystick joystick;
 
     public float speed = 400.0f;
-    public float jumpForce = 400.0f;
+    public float jumpForce = 650.0f;
     public int score;
+    private float horizontalAxis;
+    private float faceDirection;
+    private int extraJump;
+    private float hurtTime;
 
-    //是否为受伤状态
-    private bool isHurt = false;
-    //下蹲检测
-    private bool checkHead = false;
+
+    private bool isHurt = false;        //是否受伤
+    private bool checkHead = false;     //下蹲检测
+    public bool isJoyStick = false;     //是否启动摇杆
 
 
     // Start is called before the first frame update
@@ -34,55 +37,61 @@ public class PlayerController : MonoBehaviour
 
     // Update is called once per frame
     void Update()
-    {
-        Jump();
+    {   
+        if (!isHurt) Movement();
+        ExtraJump();
         Crouch();
         SwitchAnimation();
-        if (!isHurt) Movement();
     }
 
+    //移动函数
     void Movement()
     {
-        //GetAxis ：-1 -> 0 ->1 平滑过度
-        //float horizontalAxis = Input.GetAxis("Horizontal");
-        //GetAxisRaw ：直接返回-1 0 1，没有中间值
-        //float faceDirection = Input.GetAxisRaw("Horizontal");
-        
-        //安卓移动：
-        float horizontalAxis = joystick.Horizontal;
-        float faceDirection = joystick.Horizontal;
+        //移动设备
+        if (isJoyStick)
+        {
+            //获得水平轴参数
+            horizontalAxis = joystick.Horizontal;
 
+            //转向
+            if (horizontalAxis > 0f)
+                transform.localScale = new Vector3(1, 1, 1);
+            if (horizontalAxis < 0f)
+                transform.localScale = new Vector3(-1, 1, 1);
+        }
+        else
+        {
+            //PC端
+            //GetAxis ：-1 -> 0 ->1 平滑过度
+            horizontalAxis = Input.GetAxis("Horizontal");
+            //GetAxisRaw ：直接返回-1 0 1，没有中间值
+            faceDirection = Input.GetAxisRaw("Horizontal");
 
+            //角色转向
+            if (faceDirection != 0)
+                transform.localScale = new Vector3(faceDirection, 1, 1);
+        }
+   
         //角色移动
         rb.velocity = new Vector2(horizontalAxis * speed * Time.fixedDeltaTime, rb.velocity.y);
         //running参数的关联
         animator.SetFloat("running", Mathf.Abs(faceDirection));
-
-        //角色转向
-        //if (faceDirection != 0)
-        //    transform.localScale = new Vector3(faceDirection, 1, 1);
-
-        //安卓转向
-        if(faceDirection > 0f)
-            transform.localScale = new Vector3(1, 1, 1);
-        if(faceDirection < 0f)
-            transform.localScale = new Vector3(-1, 1, 1);
-
     }
 
     //切换动画效果
     void SwitchAnimation()
     {
-        if (rb.velocity.y < 0.1f && !coll.IsTouchingLayers(ground))
-        {
+        //Debug.Log(rb.velocity.y);
+        //从高处下落也要调整为falling状态
+        if (rb.velocity.y < 2f && !onGround())
             animator.SetBool("falling", true);
-        }
 
-        //正在跳跃
+        //先判断是否受伤，因为受伤状态不能做其他事
         if (isHurt)
         {
             animator.SetBool("hurting", true);
-            if (Mathf.Abs(rb.velocity.x) < 3.0f)
+            //受伤时间为0.5s
+            if (Time.time -  hurtTime > 0.5f)
             {
                 animator.SetBool("hurting", false);
                 isHurt = false;
@@ -91,15 +100,16 @@ public class PlayerController : MonoBehaviour
         else if (animator.GetBool("jumping"))
         {
             //Debug.Log(rb.velocity.y);
-            //y轴速度消失，开始下落
+            //y轴向上的速度消失，开始下落
             if (rb.velocity.y <= 0)
             {
                 animator.SetBool("jumping", false);
                 animator.SetBool("falling", true);
             }
         }
-        else if (coll.IsTouchingLayers(ground))
+        else if (bigCollider.IsTouchingLayers(ground))
         {
+            //关闭下落
             animator.SetBool("falling", false);
         }
 
@@ -111,15 +121,16 @@ public class PlayerController : MonoBehaviour
         //吃到樱桃
         if (collision.tag == "Collection")
         {
-            collectionAudio.Play();
-            collision.GetComponent<Animator>().Play("isGot");
+            Cherry cherry = collision.GetComponent<Cherry>();
+            cherry.Touch();
         }
         //碰到DeadLine
         if (collision.tag == "DeadLine")
         {
-            GetComponent<AudioSource>().enabled = false;
-            //延时2s
-            Invoke("Restart", 2f);
+            SoundManager.instance.bgm.Pause();
+            SoundManager.instance.DeathAudio();
+            //延时
+            Invoke("Restart", 1.5f);
         }
     }
 
@@ -129,49 +140,78 @@ public class PlayerController : MonoBehaviour
         if (collision.gameObject.tag == "Enemy")
         {
             Enemy enemy = collision.gameObject.GetComponent<Enemy>();
+            //计算主角与敌人之间的距离
+            float distance = transform.position.x - collision.gameObject.transform.position.x;
+            //从敌人头顶下落，就消灭敌人
             if (animator.GetBool("falling"))
             {
                 enemy.JumpOn();
                 rb.velocity = new Vector2(rb.velocity.x, 10);
-            }
-            else if (transform.position.x < collision.gameObject.transform.position.x)
+            }//从左右碰到敌人，就受伤
+            else if (distance > 0)
             {
-                isHurt = true;
-                hurtAudio.Play();
-                rb.velocity = new Vector2(-5, rb.velocity.y);
-            }
-            else if (transform.position.x > collision.gameObject.transform.position.x)
+                Hurt(5f);
+            }else if(distance < 0)
             {
-                isHurt = true;
-                hurtAudio.Play();
-                rb.velocity = new Vector2(5, rb.velocity.y);
+                Hurt(-5f);
             }
         }
+    }
+
+    //受伤函数
+    private void Hurt(float hurtForce)
+    {
+        isHurt = true;
+        SoundManager.instance.HurtAudio();
+        rb.velocity = new Vector2(hurtForce, rb.velocity.y);
+        //记录受伤的时间
+        hurtTime = Time.time;
     }
 
     //下蹲
     private void Crouch()
     {
-        if (Input.GetButtonDown("Crouch"))
+        //移动端
+        if (isJoyStick)
+        {
+            if (joystick.Vertical < -0.5f)
+            {
+                animator.SetBool("crouching", true);
+                //切换Collider
+                bigCollider.enabled = false;
+                smallCollider.enabled = true;
+            }
+            else
+            {
+                checkHead = true;
+            }
+        }
+        
+        //PC端
+        if (Input.GetButtonDown("Crouch") && onGround())
         {
             animator.SetBool("crouching", true);
-            //关闭box collider
-            discoll.enabled = false;
+            //切换Collider
+            bigCollider.enabled = false;
+            smallCollider.enabled = true;
         }
         else if (Input.GetButtonUp("Crouch"))
         {
-            //当下蹲键松下时检测启动
+            //当下蹲键松开时检测头顶有没有东西
             checkHead = true;
         }
-        //检测头顶是否有ground
+        
+        //头部检测
         if (checkHead)
         {
             //overlap是重叠的意思，函数的作用是检查是否有碰撞体进入了指定的圆形区域
-            //当角色头顶没有ground的碰撞体时才可以恢复idle状态
+            //当角色头顶没有ground的碰撞体时才可以结束下蹲状态
             if (!Physics2D.OverlapCircle(ceilingCheck.position, 0.2f, ground))
             {
                 animator.SetBool("crouching", false);
-                discoll.enabled = true;
+                //切换Collider
+                bigCollider.enabled = true;
+                smallCollider.enabled = false;
                 //关闭检测
                 checkHead = false;
             }
@@ -179,31 +219,50 @@ public class PlayerController : MonoBehaviour
     }
 
     //重新加载场景
-    void Restart()
+    private void Restart()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    //角色跳跃
-    void Jump()
+    //多段跳
+    void ExtraJump()
     {
-        if (Input.GetButtonDown("Jump") && onGround() && !isHurt)
+        //二段跳，通过debug发现，第一次跳跃到空中extraJump的值是没变的，其实执行了extraJump--
+        //但是由于初速度太小，导致刚跳到空中，依然可以检测到地面，所以extraJump又恢复了
+        if (onGround())
+            extraJump = 1;
+
+        if (isJoyStick)
         {
-            //通过修改速度来实现跳跃，x不变，y变大
-            rb.velocity = new Vector2(rb.velocity.x, jumpForce * Time.fixedDeltaTime);
-            jumpAudio.Play();
-            animator.SetBool("jumping", true);
+            //移动端
+            if (joystick.Vertical > 0.5f && extraJump > 0 && !isHurt)
+                Jump();
+        }
+        else
+        {
+            //PC端
+            if (Input.GetButtonDown("Jump") && extraJump > 0 && !isHurt)
+                Jump();
         }
     }
 
-    private bool onGround()
+    //跳跃
+    private void Jump()
     {
-        if (Physics2D.OverlapCircle(floorCheck.position, 0.2f, ground))
-            return true;
-        else
-            return false;
+        //通过修改速度来实现跳跃，x不变，y变大
+        rb.velocity = Vector2.up * jumpForce * Time.fixedDeltaTime;
+        extraJump--;
+        SoundManager.instance.JumpAudio();
+        animator.SetBool("jumping", true);
     }
 
+    //地面检测
+    private bool onGround()
+    {
+        return Physics2D.OverlapCircle(groundCheck.position, 0.2f, ground);
+    }
+
+    //樱桃计数
     public void CherryCount()
     {
         score++;
