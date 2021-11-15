@@ -11,7 +11,7 @@ public class Enemy : MonoBehaviour
         animator = GetComponent<Animator>();
         deathAudio = GetComponent<AudioSource>();
     }
-    void Death()
+    protected virtual void Death()
     {
         //取消碰撞体必须写在Death里，如果提前取消的话受重力影响，会边爆炸边下落
         GetComponent<Collider2D>().enabled = false;

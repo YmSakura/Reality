@@ -9,6 +9,7 @@ public class EnterDoor : MonoBehaviour
     {
         if(Input.GetKeyDown(KeyCode.E))
         {
+            //bulidIndex是在Build Settings里设置的
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
         }
     }

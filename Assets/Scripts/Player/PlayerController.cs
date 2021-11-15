@@ -39,7 +39,7 @@ public class PlayerController : MonoBehaviour
     private float dashTimeLeft;      //冲刺剩余时间
     private float lastDash = -10;    //上一次冲刺时间
     public float dashSpeed;         //冲刺速度
-    private float dashCoolDown = 5;  //冲刺CD
+    private float dashCoolDown = 2;  //冲刺CD
 
 
     // Start is called before the first frame update
@@ -121,7 +121,7 @@ public class PlayerController : MonoBehaviour
         animator.SetFloat("running", Mathf.Abs(horizontalAxis));
 
         //从高处下落也要调整为falling状态
-        if (rb.velocity.y < 2f && !isGround)
+        if (rb.velocity.y < -2f && !isGround)
             animator.SetBool("falling", true);
 
         //先判断是否受伤，因为受伤状态不能做其他事
@@ -167,7 +167,7 @@ public class PlayerController : MonoBehaviour
             SoundManager.instance.bgm.Pause();
             SoundManager.instance.DeathAudio();
             //延时
-            Invoke("Restart", 1.5f);
+            //Invoke("Restart", 1.5f);
         }
     }
 
@@ -292,7 +292,6 @@ public class PlayerController : MonoBehaviour
                 lastDash = Time.time;
                 isDash = true;
                 //恢复CD图片
-                Debug.Log(cdImage.fillAmount);
                 cdImage.fillAmount = 1.0f;
             }
         }
@@ -349,10 +348,5 @@ public class PlayerController : MonoBehaviour
         score++;
         cherryNumber.text = score.ToString();
     }
-
-    //重新加载场景
-    private void Restart()
-    {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-    }
+    
 }
