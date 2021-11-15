@@ -225,14 +225,14 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 1
-  m_Mass: 1.151923
+  m_Mass: 1.050247
   m_LinearDrag: 0
   m_AngularDrag: 0.05
   m_GravityScale: 3
   m_Material: {fileID: 0}
   m_Interpolate: 0
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 4
 --- !u!95 &749781200682337663
 Animator:
@@ -266,8 +266,8 @@ CapsuleCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: -0.054620266, y: -0.3402412}
-  m_Size: {x: 0.982234, y: 1.3835473}
+  m_Offset: {x: -0.060908794, y: -0.31194425}
+  m_Size: {x: 0.9319296, y: 1.3269534}
   m_Direction: 0
 --- !u!58 &749781201263312198
 CircleCollider2D:
@@ -306,10 +306,12 @@ MonoBehaviour:
   ceilingCheck: {fileID: 2397979055892270918}
   groundCheck: {fileID: 8753260665235783950}
   joystick: {fileID: 0}
-  speed: 400
-  jumpForce: 650
-  score: 0
-  isJoyStick: 0
+  cdImage: {fileID: 0}
+  speed: 7
+  jumpForce: 12
+  dashTime: 0.15
+  dashSpeed: 30
+  dashCoolDown: 1
 --- !u!1 &8825921668266171945
 GameObject:
   m_ObjectHideFlags: 0

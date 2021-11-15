@@ -7,25 +7,39 @@ public class PlayerController : MonoBehaviour
 {
     private Rigidbody2D rb;
     private Animator animator;
-
+    
     public Collider2D smallCollider, bigCollider;
     public LayerMask ground;
     public TextMeshProUGUI cherryNumber;
     public Transform ceilingCheck, groundCheck;
     public Joystick joystick;
+    public Image cdImage;
 
-    public float speed = 400.0f;
-    public float jumpForce = 650.0f;
-    public int score;
-    private float horizontalAxis;
-    private float faceDirection;
-    private int extraJump;
+    [Header("速度参数")]
+    public float speed = 10f;
+    public float jumpForce = 10f;
+
+    [Header("计时计分参数")]
+    private int score;
+    private int jumpCount;          
     private float hurtTime;
 
+    [Header("条件判断参数")]
+    private bool isHurt, isGround, isJoyStick, jumpPressed, crouchHeld, isDash, dashPressed;
+    private bool checkHead = false;     //下蹲时的检测
 
-    private bool isHurt = false;        //是否受伤
-    private bool checkHead = false;     //下蹲检测
-    public bool isJoyStick = false;     //是否启动摇杆
+    [Header("输入参数")]
+    private float horizontalAxis, faceDirection;
+    private string horizontal = "Horizontal";
+    private string jump = "Jump";
+    private string crouch = "Crouch";
+
+    [Header("Dash参数")]
+    public float dashTime;          //冲刺时间
+    private float dashTimeLeft;      //冲刺剩余时间
+    private float lastDash = -10;    //上一次冲刺时间
+    public float dashSpeed;         //冲刺速度
+    private float dashCoolDown = 5;  //冲刺CD
 
 
     // Start is called before the first frame update
@@ -33,27 +47,56 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+        //bigCollider = GetComponent<Collider2D>();
+        //smallCollider = GetComponent<Collider2D>();
     }
 
     // Update is called once per frame
     void Update()
-    {   
-        if (!isHurt) Movement();
-        ExtraJump();
+    {
+        GetInput();
+        isGround = OnGround();
+        UpdateCdImage();
+        DashCondition();
         Crouch();
         SwitchAnimation();
+        ExtraJump();
     }
 
+    private void FixedUpdate()
+    {
+        if (!isHurt) Movement();
+        Dash();
+    }
+
+    //获取玩家各种输入
+    void GetInput()
+    {
+        if(isJoyStick)
+        {
+            horizontalAxis = joystick.Horizontal;
+        }
+        else
+        {
+            //移动参数
+            horizontalAxis = Input.GetAxis(horizontal);
+            faceDirection = Input.GetAxisRaw(horizontal);
+            //跳跃参数
+            jumpPressed = Input.GetButtonDown(jump);
+            //下蹲
+            crouchHeld = Input.GetButton(crouch);
+            //冲刺
+            dashPressed = Input.GetKeyDown(KeyCode.J);
+        }
+    }
+    
     //移动函数
     void Movement()
     {
-        //移动设备
+        //手机端
         if (isJoyStick)
         {
-            //获得水平轴参数
-            horizontalAxis = joystick.Horizontal;
-
-            //转向
+            //转向要分开写，因为移动端没有GetAxisRaw
             if (horizontalAxis > 0f)
                 transform.localScale = new Vector3(1, 1, 1);
             if (horizontalAxis < 0f)
@@ -62,28 +105,23 @@ public class PlayerController : MonoBehaviour
         else
         {
             //PC端
-            //GetAxis ：-1 -> 0 ->1 平滑过度
-            horizontalAxis = Input.GetAxis("Horizontal");
-            //GetAxisRaw ：直接返回-1 0 1，没有中间值
-            faceDirection = Input.GetAxisRaw("Horizontal");
-
-            //角色转向
             if (faceDirection != 0)
                 transform.localScale = new Vector3(faceDirection, 1, 1);
         }
-   
-        //角色移动
-        rb.velocity = new Vector2(horizontalAxis * speed * Time.fixedDeltaTime, rb.velocity.y);
-        //running参数的关联
-        animator.SetFloat("running", Mathf.Abs(faceDirection));
+        
+        //移动
+        rb.velocity = new Vector2(horizontalAxis * speed, rb.velocity.y);
+        
     }
 
     //切换动画效果
-    void SwitchAnimation()
+    private void SwitchAnimation()
     {
-        //Debug.Log(rb.velocity.y);
+        //running的参数
+        animator.SetFloat("running", Mathf.Abs(horizontalAxis));
+
         //从高处下落也要调整为falling状态
-        if (rb.velocity.y < 2f && !onGround())
+        if (rb.velocity.y < 2f && !isGround)
             animator.SetBool("falling", true);
 
         //先判断是否受伤，因为受伤状态不能做其他事
@@ -99,15 +137,14 @@ public class PlayerController : MonoBehaviour
         }
         else if (animator.GetBool("jumping"))
         {
-            //Debug.Log(rb.velocity.y);
-            //y轴向上的速度消失，开始下落
+            //y轴速度向下即为falling
             if (rb.velocity.y <= 0)
             {
                 animator.SetBool("jumping", false);
                 animator.SetBool("falling", true);
             }
         }
-        else if (bigCollider.IsTouchingLayers(ground))
+        else if (isGround)
         {
             //关闭下落
             animator.SetBool("falling", false);
@@ -147,7 +184,7 @@ public class PlayerController : MonoBehaviour
             {
                 enemy.JumpOn();
                 rb.velocity = new Vector2(rb.velocity.x, 10);
-            }//从左右碰到敌人，就受伤
+            }//从其他地方碰到敌人，就受伤
             else if (distance > 0)
             {
                 Hurt(5f);
@@ -188,14 +225,14 @@ public class PlayerController : MonoBehaviour
         }
         
         //PC端
-        if (Input.GetButtonDown("Crouch") && onGround())
+        if (crouchHeld && isGround)
         {
             animator.SetBool("crouching", true);
-            //切换Collider
+            //切换为小的圆形Collider
             bigCollider.enabled = false;
             smallCollider.enabled = true;
         }
-        else if (Input.GetButtonUp("Crouch"))
+        else if (!crouchHeld)
         {
             //当下蹲键松开时检测头顶有没有东西
             checkHead = true;
@@ -209,7 +246,7 @@ public class PlayerController : MonoBehaviour
             if (!Physics2D.OverlapCircle(ceilingCheck.position, 0.2f, ground))
             {
                 animator.SetBool("crouching", false);
-                //切换Collider
+                //切换为大的胶囊体Collider
                 bigCollider.enabled = true;
                 smallCollider.enabled = false;
                 //关闭检测
@@ -218,48 +255,92 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    //重新加载场景
-    private void Restart()
-    {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-    }
 
     //多段跳
     void ExtraJump()
     {
-        //二段跳，通过debug发现，第一次跳跃到空中extraJump的值是没变的，其实执行了extraJump--
-        //但是由于初速度太小，导致刚跳到空中，依然可以检测到地面，所以extraJump又恢复了
-        if (onGround())
-            extraJump = 1;
-
-        if (isJoyStick)
+        if (isGround)
         {
-            //移动端
-            if (joystick.Vertical > 0.5f && extraJump > 0 && !isHurt)
-                Jump();
+            jumpCount = 2;
         }
-        else
+
+        if ( (jumpPressed || joystick.Vertical > 0.5f) && jumpCount > 0 && !isHurt)
         {
-            //PC端
-            if (Input.GetButtonDown("Jump") && extraJump > 0 && !isHurt)
-                Jump();
+            Jump();
+            jumpPressed = false;
+        }
+
+    }
+
+    //冲刺CD图恢复
+    void UpdateCdImage()
+    {
+        cdImage.fillAmount -= 1.0f / dashCoolDown * Time.deltaTime;
+    }
+    
+    //冲刺条件判断
+    void DashCondition()
+    {
+        if(dashPressed)
+        {
+            //判断CD是否结束
+            if ((Time.time - lastDash) >= dashCoolDown)
+            {
+                //刷新冲刺剩余时间
+                dashTimeLeft = dashTime;
+                //记录冲刺时间
+                lastDash = Time.time;
+                isDash = true;
+                //恢复CD图片
+                Debug.Log(cdImage.fillAmount);
+                cdImage.fillAmount = 1.0f;
+            }
         }
     }
 
-    //跳跃
+    //冲刺
+    private void Dash()
+    {
+        if(isDash)
+        {
+            if(dashTimeLeft <= 0)
+            {
+                isDash = false;
+                //冲刺结束的时候再往上冲一下
+                if(!isGround)
+                {
+                    rb.velocity = new Vector2(gameObject.transform.localScale.x * dashSpeed, jumpForce);
+                }
+            }
+            else
+            {
+                //如果处于空中，每次冲刺都加一个向上的力，向上冲
+                if (rb.velocity.y > 0 && !isGround)
+                {
+                    rb.velocity = new Vector2(gameObject.transform.localScale.x * dashSpeed, jumpForce);
+                }
+                    
+                rb.velocity = new Vector2(gameObject.transform.localScale.x * dashSpeed, rb.velocity.y);
+                ShadowPool.instance.GetFromPool();
+                dashTimeLeft -= Time.deltaTime;
+            }
+        }
+        
+    }
+
+    //单次跳跃
     private void Jump()
     {
-        //通过修改速度来实现跳跃，x不变，y变大
-        rb.velocity = Vector2.up * jumpForce * Time.fixedDeltaTime;
-        extraJump--;
-        SoundManager.instance.JumpAudio();
+        rb.velocity = Vector2.up * jumpForce;
         animator.SetBool("jumping", true);
+        SoundManager.instance.JumpAudio();
+        jumpCount--;
     }
 
     //地面检测
-    private bool onGround()
+    private bool OnGround()
     {
-        return Physics2D.OverlapCircle(groundCheck.position, 0.2f, ground);
+        return Physics2D.OverlapCircle(groundCheck.position, 0.1f, ground);
     }
 
     //樱桃计数
@@ -269,4 +350,9 @@ public class PlayerController : MonoBehaviour
         cherryNumber.text = score.ToString();
     }
 
+    //重新加载场景
+    private void Restart()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
 }
