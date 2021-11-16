@@ -4,13 +4,13 @@ using UnityEngine;
 
 public class EnterDialog : MonoBehaviour
 {
-    //将对话框的UI拖过来
+    //对话框的UI
     public GameObject enterDialog;
 
     //碰到主角才出现
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.gameObject.tag == "Player")
+        if (collision.gameObject.CompareTag("Player"))
         {
             enterDialog.SetActive(true);
         }
@@ -19,7 +19,7 @@ public class EnterDialog : MonoBehaviour
     //离开就消失
     private void OnTriggerExit2D(Collider2D collision)
     {
-        if (collision.gameObject.tag == "Player")
+        if (collision.gameObject.CompareTag("Player"))
         {
             enterDialog.SetActive(false);
         }

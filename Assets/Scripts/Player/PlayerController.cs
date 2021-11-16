@@ -1,18 +1,23 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 using TMPro;
+using UnityEngine.UIElements;
+using Image = UnityEngine.UI.Image;
 
 public class PlayerController : MonoBehaviour
 {
+    [Header("自身组件")]
+    public Collider2D smallCollider, bigCollider; 
     private Rigidbody2D rb;
-    private Animator animator;
-    
-    public Collider2D smallCollider, bigCollider;
+    private Animator animator;  
+
+    [Header("检测相关组件")]
     public LayerMask ground;
-    public TextMeshProUGUI cherryNumber;
     public Transform ceilingCheck, groundCheck;
+
+    [Header("UI组件")]
     public Joystick joystick;
+    public TextMeshProUGUI cherryNumber;
     public Image cdImage;
 
     [Header("速度参数")]
@@ -156,14 +161,15 @@ public class PlayerController : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D collision)
     {
         //吃到樱桃
-        if (collision.tag == "Collection")
+        if (collision.CompareTag("Collection"))
         {
             Cherry cherry = collision.GetComponent<Cherry>();
             cherry.Touch();
         }
         //碰到DeadLine
-        if (collision.tag == "DeadLine")
+        if (collision.CompareTag("DeadLine"))
         {
+            Destroy(gameObject);
             SoundManager.instance.bgm.Pause();
             SoundManager.instance.DeathAudio();
             //延时
@@ -174,21 +180,26 @@ public class PlayerController : MonoBehaviour
     //消灭敌人
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.tag == "Enemy")
+        if (collision.gameObject.CompareTag("Enemy"))
         {
             Enemy enemy = collision.gameObject.GetComponent<Enemy>();
-            //计算主角与敌人之间的距离
-            float distance = transform.position.x - collision.gameObject.transform.position.x;
+            Vector3 enemyPos = collision.gameObject.transform.position;
+            
+            //计算主角与敌人之间的水平距离
+            float xDistance = transform.position.x - enemyPos.x;
+            //垂直距离
+            float yDistancce = groundCheck.position.y - enemyPos.y;
+            
             //从敌人头顶下落，就消灭敌人
-            if (animator.GetBool("falling"))
+            if (animator.GetBool("falling") && yDistancce > 0.5f)
             {
                 enemy.JumpOn();
                 rb.velocity = new Vector2(rb.velocity.x, 10);
-            }//从其他地方碰到敌人，就受伤
-            else if (distance > 0)
+            }//从其他地方碰到敌人，就受伤被击退
+            else if (xDistance > 0)
             {
                 Hurt(5f);
-            }else if(distance < 0)
+            }else if(xDistance < 0)
             {
                 Hurt(-5f);
             }
@@ -237,7 +248,11 @@ public class PlayerController : MonoBehaviour
             //当下蹲键松开时检测头顶有没有东西
             checkHead = true;
         }
+        HeadCheck();
         
+    }
+    void HeadCheck()
+    {
         //头部检测
         if (checkHead)
         {
@@ -254,7 +269,6 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
-
 
     //多段跳
     void ExtraJump()
@@ -346,6 +360,7 @@ public class PlayerController : MonoBehaviour
     public void CherryCount()
     {
         score++;
+        //更新文本
         cherryNumber.text = score.ToString();
     }
     

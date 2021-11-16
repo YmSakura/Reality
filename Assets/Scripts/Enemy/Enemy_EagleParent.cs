@@ -19,6 +19,7 @@ public class Enemy_EagleParent : MonoBehaviour
         DestroyWithChild();
     }
 
+    //µ±GFXËÀÍöÊ±¸ú×ÅËÀÍö
     private void DestroyWithChild()
     {
         if(!child)
