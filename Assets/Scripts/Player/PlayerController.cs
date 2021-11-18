@@ -19,6 +19,7 @@ public class PlayerController : MonoBehaviour
     public Joystick joystick;
     public TextMeshProUGUI cherryNumber;
     public Image cdImage;
+    public GameObject myBag;
 
     [Header("速度参数")]
     public float speed = 10f;
@@ -48,7 +49,7 @@ public class PlayerController : MonoBehaviour
 
 
     // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
@@ -66,6 +67,7 @@ public class PlayerController : MonoBehaviour
         Crouch();
         SwitchAnimation();
         ExtraJump();
+        OpenMyBag();
     }
 
     private void FixedUpdate()
@@ -98,10 +100,10 @@ public class PlayerController : MonoBehaviour
     //移动函数
     void Movement()
     {
-        //手机端
+        //转向要分开写，因为移动端没有GetAxisRaw
         if (isJoyStick)
         {
-            //转向要分开写，因为移动端没有GetAxisRaw
+            //手机端
             if (horizontalAxis > 0f)
                 transform.localScale = new Vector3(1, 1, 1);
             if (horizontalAxis < 0f)
@@ -151,7 +153,7 @@ public class PlayerController : MonoBehaviour
         }
         else if (isGround)
         {
-            //关闭下落
+            //接触地面关闭下落
             animator.SetBool("falling", false);
         }
 
@@ -166,13 +168,14 @@ public class PlayerController : MonoBehaviour
             Cherry cherry = collision.GetComponent<Cherry>();
             cherry.Touch();
         }
+        
         //碰到DeadLine
         if (collision.CompareTag("DeadLine"))
         {
             Destroy(gameObject);
             SoundManager.instance.bgm.Pause();
             SoundManager.instance.DeathAudio();
-            //延时
+            //延时重启游戏
             //Invoke("Restart", 1.5f);
         }
     }
@@ -191,11 +194,11 @@ public class PlayerController : MonoBehaviour
             float yDistancce = groundCheck.position.y - enemyPos.y;
             
             //从敌人头顶下落，就消灭敌人
-            if (animator.GetBool("falling") && yDistancce > 0.5f)
+            if (animator.GetBool("falling") && yDistancce > 0.3f)
             {
                 enemy.JumpOn();
                 rb.velocity = new Vector2(rb.velocity.x, 10);
-            }//从其他地方碰到敌人，就受伤被击退
+            }//从其他地方碰到敌人，受伤并被击退
             else if (xDistance > 0)
             {
                 Hurt(5f);
@@ -248,6 +251,8 @@ public class PlayerController : MonoBehaviour
             //当下蹲键松开时检测头顶有没有东西
             checkHead = true;
         }
+        
+        //头部检测
         HeadCheck();
         
     }
@@ -261,7 +266,7 @@ public class PlayerController : MonoBehaviour
             if (!Physics2D.OverlapCircle(ceilingCheck.position, 0.2f, ground))
             {
                 animator.SetBool("crouching", false);
-                //切换为大的胶囊体Collider
+                //切换为大的Capsule Collider
                 bigCollider.enabled = true;
                 smallCollider.enabled = false;
                 //关闭检测
@@ -275,18 +280,28 @@ public class PlayerController : MonoBehaviour
     {
         if (isGround)
         {
-            jumpCount = 2;
+            //接触地面时恢复跳跃次数
+            jumpCount = 1;
         }
 
         if ( (jumpPressed || joystick.Vertical > 0.5f) && jumpCount > 0 && !isHurt)
         {
+            //如果按下跳跃键并且还有跳跃次数就可以跳跃
             Jump();
             jumpPressed = false;
         }
-
+    }
+    
+    //单次跳跃
+    private void Jump()
+    {
+        rb.velocity = Vector2.up * jumpForce;
+        animator.SetBool("jumping", true);
+        SoundManager.instance.JumpAudio();
+        jumpCount--;
     }
 
-    //冲刺CD图恢复
+    //冲刺CD UI恢复
     void UpdateCdImage()
     {
         cdImage.fillAmount -= 1.0f / dashCoolDown * Time.deltaTime;
@@ -300,9 +315,9 @@ public class PlayerController : MonoBehaviour
             //判断CD是否结束
             if ((Time.time - lastDash) >= dashCoolDown)
             {
-                //刷新冲刺剩余时间
+                //重置冲刺剩余时间
                 dashTimeLeft = dashTime;
-                //记录冲刺时间
+                //记录上一次冲刺时间点
                 lastDash = Time.time;
                 isDash = true;
                 //恢复CD图片
@@ -318,6 +333,7 @@ public class PlayerController : MonoBehaviour
         {
             if(dashTimeLeft <= 0)
             {
+                //冲刺结束
                 isDash = false;
                 //冲刺结束的时候再往上冲一下
                 if(!isGround)
@@ -332,23 +348,19 @@ public class PlayerController : MonoBehaviour
                 {
                     rb.velocity = new Vector2(gameObject.transform.localScale.x * dashSpeed, jumpForce);
                 }
-                    
+                
+                //水平冲刺
                 rb.velocity = new Vector2(gameObject.transform.localScale.x * dashSpeed, rb.velocity.y);
+                //从对象池中获取对象，作为残影
                 ShadowPool.instance.GetFromPool();
+                //刷新冲刺剩余时间
                 dashTimeLeft -= Time.deltaTime;
             }
         }
         
     }
 
-    //单次跳跃
-    private void Jump()
-    {
-        rb.velocity = Vector2.up * jumpForce;
-        animator.SetBool("jumping", true);
-        SoundManager.instance.JumpAudio();
-        jumpCount--;
-    }
+    
 
     //地面检测
     private bool OnGround()
@@ -362,6 +374,15 @@ public class PlayerController : MonoBehaviour
         score++;
         //更新文本
         cherryNumber.text = score.ToString();
+    }
+
+    void OpenMyBag()
+    {
+        if (Input.GetKeyDown(KeyCode.B))
+        {
+            //如果背包打开就关闭，如果关闭就打开
+            myBag.SetActive(!myBag.activeSelf);
+        }
     }
     
 }

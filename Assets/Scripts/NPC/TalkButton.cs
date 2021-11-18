@@ -5,20 +5,18 @@ using UnityEngine.UI;
 
 public class TalkButton : MonoBehaviour
 {
-    //开启对话按钮
     public GameObject talkButton;
-    //对话框
     public GameObject talkUI;
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.gameObject.tag == "Player")
+        if (collision.gameObject.CompareTag("Player"))
             talkButton.SetActive(true);
     }
 
     private void OnTriggerExit2D(Collider2D collision)
     {
-        if (collision.gameObject.tag == "Player")
+        if (collision.gameObject.CompareTag("Player"))
             talkButton.SetActive(false);
     }
 

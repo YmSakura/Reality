@@ -7,7 +7,7 @@ using UnityEngine.Audio;
 public class Menu : MonoBehaviour
 {
     public GameObject pauseMenu;
-    public GameObject gameOverPanel;
+    //public GameObject gameOverPanel;
     public AudioMixer audioMixer;
     
     //开始游戏，进入下一个场景
@@ -16,10 +16,10 @@ public class Menu : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
     }
 
-    public void GameOver()
-    {
-        gameOverPanel.SetActive(true);
-    }
+    // public void GameOver()
+    // {
+    //     gameOverPanel.SetActive(true);
+    // }
 
     //退出游戏
     public void QuitGame()
@@ -27,7 +27,7 @@ public class Menu : MonoBehaviour
         Application.Quit();
     }
 
-    //启动UI
+    //渐变动画结束后启动UI
     private void UIEnable()
     {
         //新学的函数Find，通过Hierachy窗口的目录来查找物体
@@ -48,13 +48,13 @@ public class Menu : MonoBehaviour
         Time.timeScale = 1f;
     }
 
-    //控制音量
+    //用Slider控制音量
     public void SetVolume(float value)
     {
         audioMixer.SetFloat("MainVolume", value);
     }
 
-    //重新加载场景
+    //死后点击按钮重新加载场景
     public void Restart()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
