@@ -1,8 +1,6 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using TMPro;
-using UnityEngine.UIElements;
-using Image = UnityEngine.UI.Image;
+using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour
 {
@@ -30,9 +28,9 @@ public class PlayerController : MonoBehaviour
     private int jumpCount;          
     private float hurtTime;
 
-    [Header("条件判断参数")]
-    private bool isHurt, isGround, isJoyStick, jumpPressed, crouchHeld, isDash, dashPressed;
-    private bool checkHead = false;     //下蹲时的检测
+    [Header("条件判断参数")] public bool isJoyStick;
+    private bool jumpPressed, crouchHeld, dashPressed, openBagPressed;
+    private bool isHurt, isGround, isDash, checkHead;     //下蹲时的检测
 
     [Header("输入参数")]
     private float horizontalAxis, faceDirection;
@@ -41,20 +39,16 @@ public class PlayerController : MonoBehaviour
     private string crouch = "Crouch";
 
     [Header("Dash参数")]
-    public float dashTime;          //冲刺时间
+    public float dashTime;          //冲刺总时间
     private float dashTimeLeft;      //冲刺剩余时间
-    private float lastDash = -10;    //上一次冲刺时间
+    private float lastDash = -10;    //上一次冲刺时间点
     public float dashSpeed;         //冲刺速度
     private float dashCoolDown = 2;  //冲刺CD
-
-
-    // Start is called before the first frame update
+    
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
-        //bigCollider = GetComponent<Collider2D>();
-        //smallCollider = GetComponent<Collider2D>();
     }
 
     // Update is called once per frame
@@ -94,10 +88,12 @@ public class PlayerController : MonoBehaviour
             crouchHeld = Input.GetButton(crouch);
             //冲刺
             dashPressed = Input.GetKeyDown(KeyCode.J);
+            //打开背包
+            openBagPressed = Input.GetKeyDown(KeyCode.B);
         }
     }
     
-    //移动函数
+    //移动
     void Movement()
     {
         //转向要分开写，因为移动端没有GetAxisRaw
@@ -180,9 +176,10 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    //消灭敌人
+    //碰撞器检测
     private void OnCollisionEnter2D(Collision2D collision)
     {
+        //碰到敌人
         if (collision.gameObject.CompareTag("Enemy"))
         {
             Enemy enemy = collision.gameObject.GetComponent<Enemy>();
@@ -315,12 +312,14 @@ public class PlayerController : MonoBehaviour
             //判断CD是否结束
             if ((Time.time - lastDash) >= dashCoolDown)
             {
+                isDash = true;
+                dashPressed = false;
+                
                 //重置冲刺剩余时间
                 dashTimeLeft = dashTime;
-                //记录上一次冲刺时间点
+                //记录本次冲刺时间点
                 lastDash = Time.time;
-                isDash = true;
-                //恢复CD图片
+                //技能图标开始冷却
                 cdImage.fillAmount = 1.0f;
             }
         }
@@ -343,6 +342,9 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
+                //从对象池中获取对象，作为残影
+                ShadowPool.instance.GetFromPool();
+                
                 //如果处于空中，每次冲刺都加一个向上的力，向上冲
                 if (rb.velocity.y > 0 && !isGround)
                 {
@@ -351,8 +353,7 @@ public class PlayerController : MonoBehaviour
                 
                 //水平冲刺
                 rb.velocity = new Vector2(gameObject.transform.localScale.x * dashSpeed, rb.velocity.y);
-                //从对象池中获取对象，作为残影
-                ShadowPool.instance.GetFromPool();
+                
                 //刷新冲刺剩余时间
                 dashTimeLeft -= Time.deltaTime;
             }
@@ -361,7 +362,6 @@ public class PlayerController : MonoBehaviour
     }
 
     
-
     //地面检测
     private bool OnGround()
     {
@@ -376,12 +376,14 @@ public class PlayerController : MonoBehaviour
         cherryNumber.text = score.ToString();
     }
 
+    //打开背包
     void OpenMyBag()
     {
-        if (Input.GetKeyDown(KeyCode.B))
+        if (openBagPressed)
         {
             //如果背包打开就关闭，如果关闭就打开
             myBag.SetActive(!myBag.activeSelf);
+            openBagPressed = false;
         }
     }
     

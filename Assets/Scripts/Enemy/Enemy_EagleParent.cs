@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class Enemy_EagleParent : MonoBehaviour
 {
-    [SerializeField]
     private GameObject child;
     
     // Start is called before the first frame update

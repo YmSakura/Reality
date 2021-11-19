@@ -2,12 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+//对象池
 public class ShadowPool : MonoBehaviour
 {
     //单例模式
     public static ShadowPool instance;
 
-    //shadow的预制体
+    //shadow的预制体，用来生成实例
     public GameObject shadowPrefab;
 
     //对象池中对象数量
@@ -18,6 +19,7 @@ public class ShadowPool : MonoBehaviour
 
     private void Awake()
     {
+        //初始化单例
         if(instance != null)
             Destroy(this);
         instance = this;
@@ -39,13 +41,13 @@ public class ShadowPool : MonoBehaviour
         }
     }
 
-    //进入对象池
-    public void IntoPool(GameObject gameObject)
+    //进入对象池（初始化以及冲刺结束后调用）
+    public void IntoPool(GameObject shadowObj)
     {
-        //不显示在游戏中
-        gameObject.SetActive(false);
-        //入队
-        availableObjects.Enqueue(gameObject);
+        //默认不显示
+        shadowObj.SetActive(false);
+        //入队等待下次使用
+        availableObjects.Enqueue(shadowObj);
     }
 
     //从对象池中取出一个作为残影

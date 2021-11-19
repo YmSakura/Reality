@@ -7,7 +7,6 @@ using UnityEngine.Audio;
 public class Menu : MonoBehaviour
 {
     public GameObject pauseMenu;
-    //public GameObject gameOverPanel;
     public AudioMixer audioMixer;
     
     //开始游戏，进入下一个场景
@@ -15,12 +14,7 @@ public class Menu : MonoBehaviour
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
     }
-
-    // public void GameOver()
-    // {
-    //     gameOverPanel.SetActive(true);
-    // }
-
+    
     //退出游戏
     public void QuitGame()
     {
